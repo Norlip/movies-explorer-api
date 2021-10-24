@@ -24,9 +24,6 @@ const createUser = (req, res, next) => {
     .catch((err) => {
       if (err.name === 'MongoError' || err.code === 11000) {
         next(new EmailError('Пользователь с таким email уже существует'));
-      }
-      if (err.name === 'ValidationError') {
-        next(new SomethingWrong('Введены некорректные данные'));
       } else {
         next(err);
       }
@@ -49,6 +46,9 @@ const reloadProfile = (req, res, next) => {
     .catch((err) => {
       if (err.name === 'ValidationError') {
         throw new SomethingWrong('Введены некорректные данные');
+      }
+      if (err.name === 'MongoError' || err.code === 11000) {
+        throw new EmailError('Пользователь с таким email уже существует');
       } else { next(err); }
     })
     .catch(next);

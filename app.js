@@ -3,20 +3,12 @@ const { errors } = require('celebrate');
 require('dotenv').config();
 const cookieParser = require('cookie-parser');
 
-const app = express();
 const bodyParser = require('body-parser');
 const mongoose = require('mongoose');
 const cors = require('cors');
-
-const auth = require('./middlewares/auth');
-const usersRouter = require('./routes/users');
-const moviesRouter = require('./routes/movies');
-const { login, createUser } = require('./controllers/users');
-
-const {
-  userValid,
-  loginValid,
-} = require('./middlewares/valid');
+const helmet = require('helmet');
+const router = require('./routes/index');
+const limiter = require('./middlewares/rateLimiter');
 
 const { requestLogger, errorLogger } = require('./middlewares/logger');
 
@@ -28,14 +20,20 @@ const whitelist = [
 
 ];
 
+const app = express();
+app.use(helmet());
+
 app.use(cors({
   origin: whitelist,
   credentials: true,
 }));
-const { PORT = 3000 } = process.env;
-const NotFoundError = require('./errors/not-found');
+const {
+  NODE_ENV, DB_URL,
 
-mongoose.connect('mongodb://localhost:27017/bitfilmsdb', {
+  PORT = 3000,
+} = process.env;
+
+mongoose.connect(NODE_ENV === 'production' ? DB_URL : 'mongodb://localhost:27017/moviesdb', {
   useNewUrlParser: true,
 
 });
@@ -48,20 +46,14 @@ app.get('/crash-test', () => {
     throw new Error('Сервер сейчас упадёт');
   }, 0);
 });
-app.post('/signin', loginValid, login);
-app.post('/signup', userValid, createUser);
-app.use(auth);
-app.use('/', usersRouter);
-app.use('/', moviesRouter);
+app.use(limiter);
+
+app.use('/', router);
+
 app.use(errorLogger);
 app.use(errors());
 
-app.use('*', (req, res, next) => {
-  next(new NotFoundError('Маршрут не найден'));
-});
-
-// eslint-disable-next-line no-unused-vars
-app.use((err, req, res, next) => {
+app.use((err, req, res) => {
   const { status = 500, message } = err;
 
   res

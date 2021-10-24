@@ -1,4 +1,3 @@
-/* eslint-disable no-useless-escape */
 const { celebrate, Joi } = require('celebrate');
 const validator = require('validator');
 
@@ -41,8 +40,8 @@ const userValid = celebrate({
 
 const movieIdValid = celebrate({
   params: Joi.object().keys({
-    movieId: Joi.string().hex().length(3).message('Не верный id')
-      .required(),
+    movieId: Joi.string().hex(),
+
   }),
 });
 const movieValid = celebrate({
@@ -57,7 +56,7 @@ const movieValid = celebrate({
     image: Joi.string().required().custom(url),
     trailer: Joi.string().required().custom(url),
     thumbnail: Joi.string().required().custom(url),
-    movieId: Joi.string().required(),
+    movieId: Joi.number().required(),
   }),
 });
 module.exports = {

@@ -5,18 +5,14 @@ const ForbiddenError = require('../errors/forbiddenError');
 
 const deleteMovie = (req, res, next) => {
   Movie.findById(req.params.movieId)
-    .then((user) => {
-      if (!user) {
+    .then((movie) => {
+      if (!movie) {
         throw new NotFoundError('Фильм не надйен');
       }
-      if (!user.owner.equals(req.user._id)) {
+      if (!movie.owner.equals(req.user._id)) {
         throw new ForbiddenError('Ошибка авторизации');
       } else {
-        Movie.findById(req.params.movieId)
-          .findByIdAndRemove(req.params.movieId)
-          .then((card) => {
-            res.send(card);
-          })
+        movie.remove().then(() => res.send({ message: movie }))
           .catch((err) => {
             if (err.name === 'CastError') {
               next(new SomethingWrong('Введены некорректные данные'));
@@ -24,7 +20,11 @@ const deleteMovie = (req, res, next) => {
           });
       }
     })
-    .catch((err) => res.send({ err }));
+    .catch((err) => {
+      if (err.name === 'CastError') {
+        next(new SomethingWrong('Введены некорректные данные'));
+      } else { res.send({ err }); }
+    });
 };
 
 const getMovies = (req, res, next) => {
@@ -48,7 +48,6 @@ const createMovie = (req, res, next) => {
     movieId,
   } = req.body;
 
-  const owner = req.user._id;
   Movie.create({
     country,
     director,
@@ -61,10 +60,10 @@ const createMovie = (req, res, next) => {
     nameEN,
     thumbnail,
     movieId,
-    owner,
+    owner: req.user._id,
   })
 
-    .then((user) => res.send(user))
+    .then((movie) => res.send(movie))
     .catch((err) => {
       if (err.name === 'ValidationError') {
         next(new SomethingWrong('Введены некорректные данные'));
